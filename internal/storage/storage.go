@@ -2,101 +2,98 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
+	_ "github.com/lib/pq"
 )
 
-type RedisStorage struct {
-	client *redis.Client
+type PostgresStorage struct {
+	db *sql.DB
 }
 
-func NewRedisStorage(addr, password string, db int) (*RedisStorage, error) {
-	ctx := context.Background()
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
-		DB:       db,
-	})
-
-	if _, err := rdb.Ping(ctx).Result(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+func NewPostgresStorage(dsn string) (*PostgresStorage, error) {
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open postgres connection: %w", err)
 	}
 
-	return &RedisStorage{client: rdb}, nil
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping postgres: %w", err)
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS sites (
+			id UUID PRIMARY KEY,
+			url TEXT NOT NULL,
+			active BOOLEAN NOT NULL DEFAULT true
+		)
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create table: %w", err)
+	}
+
+	return &PostgresStorage{db: db}, nil
 }
 
-func (r *RedisStorage) AddSite(ctx context.Context, site Site) (string, error) {
+func (p *PostgresStorage) AddSite(ctx context.Context, site Site) (string, error) {
 	if site.ID == "" {
 		site.ID = uuid.New().String()
 	}
-
-	key := fmt.Sprintf("site:%s", site.ID)
-	err := r.client.HSet(ctx, key, map[string]interface{}{
-		"url":    site.URL,
-		"active": site.Active,
-	}).Err()
+	_, err := p.db.ExecContext(ctx,
+		`INSERT INTO sites (id, url, active) VALUES ($1, $2, $3)`,
+		site.ID, site.URL, site.Active,
+	)
 	if err != nil {
 		return "", err
 	}
-
-	err = r.client.SAdd(ctx, "sites", site.ID).Err()
-	if err != nil {
-		return "", err
-	}
-
 	return site.ID, nil
 }
 
-func (r *RedisStorage) GetSites(ctx context.Context) ([]Site, error) {
-	ids, err := r.client.SMembers(ctx, "sites").Result()
+func (p *PostgresStorage) GetSites(ctx context.Context) ([]Site, error) {
+	rows, err := p.db.QueryContext(ctx, `SELECT id, url, active FROM sites`)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var sites []Site
-	for _, id := range ids {
-		site, err := r.GetSiteByID(ctx, id)
-		if err == nil && site != nil {
-			sites = append(sites, *site)
+	for rows.Next() {
+		var s Site
+		if err := rows.Scan(&s.ID, &s.URL, &s.Active); err != nil {
+			return nil, err
 		}
+		sites = append(sites, s)
 	}
-
 	return sites, nil
 }
 
-func (r *RedisStorage) GetSiteByID(ctx context.Context, id string) (*Site, error) {
-	key := fmt.Sprintf("site:%s", id)
-	data, err := r.client.HGetAll(ctx, key).Result()
+func (p *PostgresStorage) GetSiteByID(ctx context.Context, id string) (*Site, error) {
+	var s Site
+	err := p.db.QueryRowContext(ctx,
+		`SELECT id, url, active FROM sites WHERE id=$1`, id,
+	).Scan(&s.ID, &s.URL, &s.Active)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	if len(data) == 0 {
-		return nil, nil
-	}
-
-	site := Site{
-		ID:  id,
-		URL: data["url"],
-	}
-	site.Active = data["active"] == "1" || data["active"] == "true"
-
-	return &site, nil
+	return &s, nil
 }
 
-func (r *RedisStorage) UpdateSite(ctx context.Context, site Site) error {
-	key := fmt.Sprintf("site:%s", site.ID)
-	return r.client.HSet(ctx, key, map[string]interface{}{
-		"url":    site.URL,
-		"active": site.Active,
-	}).Err()
+func (p *PostgresStorage) UpdateSite(ctx context.Context, site Site) error {
+	_, err := p.db.ExecContext(ctx,
+		`UPDATE sites SET url=$1, active=$2 WHERE id=$3`,
+		site.URL, site.Active, site.ID,
+	)
+	return err
 }
 
-func (r *RedisStorage) DeleteSite(ctx context.Context, id string) error {
-	key := fmt.Sprintf("site:%s", id)
-	if err := r.client.Del(ctx, key).Err(); err != nil {
-		return err
-	}
-	return r.client.SRem(ctx, "sites", id).Err()
+func (p *PostgresStorage) DeleteSite(ctx context.Context, id string) error {
+	_, err := p.db.ExecContext(ctx,
+		`DELETE FROM sites WHERE id=$1`, id,
+	)
+	return err
 }

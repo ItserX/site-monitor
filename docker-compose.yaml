@@ -1,13 +1,17 @@
 services:
-  redis:
-    image: redis:7.2
-    container_name: site-monitor-redis
+  postgres:
+    image: postgres:15
+    container_name: postgres
     restart: always
+    environment:
+      POSTGRES_USER: sitemonitor
+      POSTGRES_PASSWORD: sitemonitor
+      POSTGRES_DB: sitemonitor
     ports:
-      - "6379:6379"
+      - "5432:5432"
     volumes:
-      - redis_data:/data
-    command: ["redis-server", "--appendonly", "yes"]
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
 
 volumes:
-  redis_data:
+  postgres_data:

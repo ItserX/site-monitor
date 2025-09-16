@@ -7,10 +7,14 @@ type CheckerConfig struct {
 	} `yaml:"checker"`
 }
 
-type RedisConfig struct {
-	Redis struct {
-		Addr     string `yaml:"addr"`
-		Password string `yaml:"password"`
-		DB       int    `yaml:"db"`
-	} `yaml:"redis"`
+type PostgresConfig struct {
+	Postgres struct {
+		DSN string `yaml:"dsn"`
+	} `yaml:"postgres"`
+}
+
+type CrudConfig struct {
+	Server struct {
+		Port int `yaml:"port"`
+	} `yaml:"server"`
 }

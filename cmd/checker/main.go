@@ -23,48 +23,48 @@ func main() {
 	}
 	defer log.Sync()
 
-	checkerCfg, redisCfg, err := loadConfigs()
+	checkerCfg, pgCfg, err := loadConfigs()
 	if err != nil {
 		log.Sugar.Errorw("Failed to load configs", "error", err)
 		return
 	}
 
-	redisClient, err := setupRedis(redisCfg, log)
+	pgClient, err := setupPostgres(pgCfg, log)
 	if err != nil {
-		log.Sugar.Errorw("Failed to setup Redis", "error", err)
+		log.Sugar.Errorw("Failed to setup Postgres", "error", err)
 		return
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	setupGracefulShutdown(cancel, log)
-	runCheckerLoop(ctx, checkerCfg, redisClient, log)
+	runCheckerLoop(ctx, checkerCfg, pgClient, log)
 }
 
 func setupLogger() (*logger.Logger, error) {
 	return logger.SetupLogger()
 }
 
-func loadConfigs() (config.CheckerConfig, config.RedisConfig, error) {
+func loadConfigs() (config.CheckerConfig, config.PostgresConfig, error) {
 	var checkerCfg config.CheckerConfig
-	var redisCfg config.RedisConfig
+	var pgCfg config.PostgresConfig
 
 	if err := config.LoadConfig("configs/checker.yaml", &checkerCfg); err != nil {
-		return checkerCfg, redisCfg, err
+		return checkerCfg, pgCfg, err
 	}
-	if err := config.LoadConfig("configs/redis.yaml", &redisCfg); err != nil {
-		return checkerCfg, redisCfg, err
+	if err := config.LoadConfig("configs/postgres.yaml", &pgCfg); err != nil {
+		return checkerCfg, pgCfg, err
 	}
-	return checkerCfg, redisCfg, nil
+	return checkerCfg, pgCfg, nil
 }
 
-func setupRedis(redisCfg config.RedisConfig, log *logger.Logger) (*storage.RedisStorage, error) {
-	redisClient, err := storage.NewRedisStorage(redisCfg.Redis.Addr, redisCfg.Redis.Password, redisCfg.Redis.DB)
+func setupPostgres(pgCfg config.PostgresConfig, log *logger.Logger) (*storage.PostgresStorage, error) {
+	client, err := storage.NewPostgresStorage(pgCfg.Postgres.DSN)
 	if err != nil {
-		log.Sugar.Errorw("Redis connection failed", "error", err)
+		log.Sugar.Errorw("Postgres connection failed", "error", err)
 		return nil, err
 	}
-	return redisClient, nil
+	return client, nil
 }
 
 func setupGracefulShutdown(cancelFunc context.CancelFunc, log *logger.Logger) {
@@ -77,7 +77,7 @@ func setupGracefulShutdown(cancelFunc context.CancelFunc, log *logger.Logger) {
 	}()
 }
 
-func runCheckerLoop(ctx context.Context, cfg config.CheckerConfig, redisClient *storage.RedisStorage, log *logger.Logger) {
+func runCheckerLoop(ctx context.Context, cfg config.CheckerConfig, pgClient *storage.PostgresStorage, log *logger.Logger) {
 	ticker := time.NewTicker(time.Duration(cfg.Checker.Interval) * time.Second)
 	defer ticker.Stop()
 
@@ -90,15 +90,15 @@ func runCheckerLoop(ctx context.Context, cfg config.CheckerConfig, redisClient *
 			return
 
 		case <-ticker.C:
-			checkSites(ctx, cfg, redisClient, log)
+			checkSites(ctx, cfg, pgClient, log)
 		}
 	}
 }
 
-func checkSites(ctx context.Context, cfg config.CheckerConfig, redisClient *storage.RedisStorage, log *logger.Logger) {
-	targets, err := redisClient.GetSites(ctx)
+func checkSites(ctx context.Context, cfg config.CheckerConfig, pgClient *storage.PostgresStorage, log *logger.Logger) {
+	targets, err := pgClient.GetSites(ctx)
 	if err != nil {
-		log.Sugar.Errorw("Failed to get sites from Redis", "error", err)
+		log.Sugar.Errorw("Failed to get sites from Postgres", "error", err)
 		return
 	}
 
