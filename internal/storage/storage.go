@@ -22,18 +22,6 @@ func NewPostgresStorage(dsn string) (*PostgresStorage, error) {
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping postgres: %w", err)
 	}
-
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS sites (
-			id UUID PRIMARY KEY,
-			url TEXT NOT NULL,
-			active BOOLEAN NOT NULL DEFAULT true
-		)
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create table: %w", err)
-	}
-
 	return &PostgresStorage{db: db}, nil
 }
 

@@ -1,2 +1,0 @@
-postgres:
-  dsn: "postgres://sitemonitor:sitemonitor@localhost:5432/sitemonitor?sslmode=disable"

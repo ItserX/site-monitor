@@ -1,3 +1,9 @@
 checker:
-  interval: 60
-  timeout: 15    
+  timeout: 5
+  interval: 5
+  api_url: "http://localhost:8080"
+
+kafka:
+  brokers:
+    - "localhost:9092"
+  topic: "site_alerts"

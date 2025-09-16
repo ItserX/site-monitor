@@ -25,13 +25,13 @@ func main() {
 	}
 	defer log.Sync()
 
-	crudCfg, pgCfg, err := loadConfigs()
+	crudCfg, err := loadConfigs()
 	if err != nil {
-		log.Sugar.Errorw("Failed to load configs", "error", err)
+		log.Sugar.Errorw("Failed to load config", "error", err)
 		return
 	}
 
-	pgClient, err := setupPostgres(pgCfg, log)
+	pgClient, err := setupPostgres(crudCfg, log)
 	if err != nil {
 		log.Sugar.Errorw("Failed to setup Postgres", "error", err)
 		return
@@ -48,21 +48,19 @@ func setupLogger() (*logger.Logger, error) {
 	return logger.SetupLogger()
 }
 
-func loadConfigs() (config.CrudConfig, config.PostgresConfig, error) {
+func loadConfigs() (config.CrudConfig, error) {
 	var crudCfg config.CrudConfig
-	var pgCfg config.PostgresConfig
 
 	if err := config.LoadConfig("configs/crud.yaml", &crudCfg); err != nil {
-		return crudCfg, pgCfg, err
+		return crudCfg, err
 	}
-	if err := config.LoadConfig("configs/postgres.yaml", &pgCfg); err != nil {
-		return crudCfg, pgCfg, err
-	}
-	return crudCfg, pgCfg, nil
+
+	return crudCfg, nil
 }
 
-func setupPostgres(pgCfg config.PostgresConfig, log *logger.Logger) (*storage.PostgresStorage, error) {
-	client, err := storage.NewPostgresStorage(pgCfg.Postgres.DSN)
+func setupPostgres(crudCfg config.CrudConfig, log *logger.Logger) (storage.Storage, error) {
+	var client storage.Storage
+	client, err := storage.NewPostgresStorage(crudCfg.Postgres.DSN)
 	if err != nil {
 		log.Sugar.Errorw("Postgres connection failed", "error", err)
 		return nil, err
@@ -80,10 +78,10 @@ func setupGracefulShutdown(cancelFunc context.CancelFunc, log *logger.Logger) {
 	}()
 }
 
-func runCrudServer(ctx context.Context, cfg config.CrudConfig, pgClient *storage.PostgresStorage, log *logger.Logger) {
+func runCrudServer(ctx context.Context, cfg config.CrudConfig, dbClient storage.Storage, log *logger.Logger) {
 	r := chi.NewRouter()
 
-	crudHandler := crud.NewHandler(pgClient, log)
+	crudHandler := crud.NewHandler(dbClient, log)
 	crudHandler.RegisterRoutes(r)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
