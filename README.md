@@ -1,40 +1,81 @@
-# site-monitor
+# Website Monitoring System
 
-#Project Overview
+## Project Overview
 
-The project is a distributed system for monitoring website availability, collecting metrics, and sending alerts. The system is built on a microservices architecture using modern monitoring technologies.
-System Architecture
+A distributed microservices-based system for monitoring website availability, collecting performance metrics, and sending real-time alerts. Built with modern cloud-native technologies and designed for scalability and reliability.
 
-**Core Components**
+## System Architecture
 
-    - CRUD Service - Service for managing websites in the database
+### Core Services
 
-    - REST API for website operations (Create, Read, Update, Delete)
+| Service | Description | Port | Database |
+|---------|-------------|------|----------|
+| **CRUD Service** | Manages website entities in database | 8080 | PostgreSQL |
+| **Checker Service** | Performs website availability checks | - | - |
+| **Alert Service** | Alerts delivery | - | - |
 
-    - Works with PostgreSQL
+### Monitoring Stack
 
-    - Checker Service - Website availability checking service
+| Component | Purpose | Port |
+|-----------|---------|------|
+| **Prometheus** | Metrics collection and storage | 9090 |
+| **Loki** | Log aggregation and storage | 3100 |
+| **Grafana** | Visualization and dashboards | 3000 |
+| **Promtail** | Log collection agent | - |
+| **Pushgateway** | Metrics gateway | 9091 |
 
-    - Performs periodic website checks
+### Data Storage
 
-    - Stores check statuses in Redis
+| Database | Purpose |
+|----------|---------|
+| **PostgreSQL** | Persistent storage of website configurations |
+| **Redis** | Temporary storage of check statuses and alerts |
 
-    - Alert Service - Alert notification service
+## Project Structure
 
-    - Processes events and sends notifications via Telegram
+```bash
+.
+├── cmd/                    # Application entry points
+│   ├── alert/             # Alert service main
+│   ├── checker/           # Checker service main
+│   └── crud/              # CRUD service main
+├── configs/               # Service configuration files
+│   ├── alert.yaml
+│   ├── checker.yaml
+│   └── crud.yaml
+├── internal/              # Internal application code
+│   ├── alert/             # Alert business logic
+│   ├── checker/           # Checker business logic
+│   ├── config/            # Configuration management
+│   ├── crud/              # HTTP handlers
+│   ├── storage/           # Database abstractions
+│   └── telegram/          # Telegram integration
+├── pkg/                   # Shared utilities
+│   ├── logger/            # Structured logging
+│   ├── metrics/           # Prometheus metrics
+│   └── utils/             # Common utilities
+├── migrations/            # Database schema migrations
+├── grafana/               # Grafana provisioning
+│   └── provisioning/
+│       ├── dashboards/    # Dashboard definitions
+│       └── datasources/   # Data source configurations
+├── docker-compose.yaml    # Full environment setup
+├── Dockerfile.*           # Service-specific Dockerfiles
+└── *.yml                  # Monitoring configuration files
+```
 
-Monitoring Infrastructure:
+## API
+### CRUD Service (8080)
+```bash 
+GET    /sites          # List all websites
+GET    /sites/{id}     # Get specific website
+POST   /sites          # Add new website
+PUT    /sites/{id}     # Update website
+DELETE /sites/{id}     # Remove website
+```
 
-    - Prometheus - Metrics collection and storage system
-
-    - Loki - Database for log storage
-
-    - Grafana - Platform for metrics and log visualization
-
-    - Promtail - Agent for collecting and sending logs to Loki
-
-    - Pushgateway - Gateway for receiving metrics
-
-    - Redis - Database for storing check statuses
-
-    - PostgreSQL - Main database for storing website information
+## Deployment
+```bash 
+cd site-monitor
+docker-compose up
+```
