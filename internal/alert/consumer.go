@@ -84,12 +84,12 @@ func (a *AlertConsumer) Consume(ctx context.Context) {
 func (a *AlertConsumer) shouldSendAlert(url string, isUp bool) (bool, error) {
 	key := "site_status:" + url
 	val, err := a.redis.Get(key).Result()
-	if err != nil {
-		return false, err
-	}
+
 	var state SiteState
-	if err := json.Unmarshal([]byte(val), &state); err != nil {
-		return true, nil
+	if err == nil {
+		if err := json.Unmarshal([]byte(val), &state); err != nil {
+			return true, nil
+		}
 	}
 
 	now := time.Now()
