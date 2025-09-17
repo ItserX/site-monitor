@@ -1,80 +1,86 @@
 # site-monitor
 
-## Project Overview
+## Обзор проекта
 
-A distributed microservices-based system for monitoring website availability, collecting performance metrics, and sending real-time alerts. Built with modern cloud-native technologies and designed for scalability and reliability.
+Распределенная система на основе микросервисов для мониторинга доступности веб-сайтов, сбора метрик производительности и отправки оповещений в реальном времени. 
 
-## System Architecture
+## Архитектура системы
 
-### Core Services
+<details>
+<summary><b>Посмотреть схему архитектуры (нажмите чтобы развернуть)</b></summary>
 
-| Service | Description | Port | Database |
+![Диаграмма архитектуры проекта site-monitor](docs/architecture.svg)
+*Рисунок 1: Общая схема взаимодействия микросервисов и компонентов мониторинга.*
+</details>
+### Сервисы
+
+| Сервис | Описание | Порт | База данных |
 |---------|-------------|------|----------|
-| **CRUD Service** | Manages website entities in database | 8080 | PostgreSQL |
-| **Checker Service** | Performs website availability checks | - | - |
-| **Alert Service** | Alerts delivery | - | - |
+| **CRUD Service** | Управляет записями адресов веб-сайтов в базе данных | 8080 | PostgreSQL |
+| **Checker Service** | Выполняет проверки доступности веб-сайтов | - | - |
+| **Alert Service** | Доставка оповещений | - | - |
 
-### Monitoring Stack
+### Стек мониторинга 
 
-| Component | Purpose | Port |
+| Компонент | Назначение | Порт |
 |-----------|---------|------|
-| **Prometheus** | Metrics collection and storage | 9090 |
-| **Loki** | Log aggregation and storage | 3100 |
-| **Grafana** | Visualization and dashboards | 3000 |
-| **Promtail** | Log collection agent | - |
-| **Pushgateway** | Metrics gateway | 9091 |
+| **Prometheus** | Сбор и хранение метрик | 9090 |
+| **Loki** | Агрегация и хранение логов | 3100 |
+| **Grafana** | Визуализация и дашборды | 3000 |
+| **Promtail** | Сервис для сбора логов | - |
+| **Pushgateway** | Сервис для отправки логов | 9091 |
 
-### Data Storage
+### Базы данных
 
 | Database | Purpose |
 |----------|---------|
-| **PostgreSQL** | Persistent storage of website configurations |
-| **Redis** | Temporary storage of check statuses and alerts |
+| **PostgreSQL** | Хранение адресов веб-сайтов |
+| **Redis** | Временное хранение статусов проверок и оповещений |
 
-## Project Structure
+## Структура проекта
 
 ```bash
 .
-├── cmd/                    # Application entry points
-│   ├── alert/             # Alert service main
-│   ├── checker/           # Checker service main
-│   └── crud/              # CRUD service main
-├── configs/               # Service configuration files
+├── cmd/                   # Точки входа приложений
+│   ├── alert/             # Главный файл сервиса оповещений
+│   ├── checker/           # Главный файл сервиса проверок
+│   └── crud/              # Главный файл CRUD сервиса
+├── configs/               # Файлы конфигурации сервисов
 │   ├── alert.yaml
 │   ├── checker.yaml
 │   └── crud.yaml
-├── internal/              # Internal application code
-│   ├── alert/             # Alert business logic
-│   ├── checker/           # Checker business logic
-│   ├── config/            # Configuration management
-│   ├── crud/              # HTTP handlers
-│   ├── storage/           # Database abstractions
-│   └── telegram/          # Telegram integration
-├── pkg/                   # Shared utilities
-│   ├── logger/            # Structured logging
-│   ├── metrics/           # Prometheus metrics
-│   └── utils/             # Common utilities
-├── migrations/            # Database schema migrations
-├── grafana/               # Grafana provisioning
+├── internal/              # Внутренний код приложения
+│   ├── alert/             # Бизнес-логика оповещений
+│   ├── checker/           # Бизнес-логика проверок
+│   ├── config/            # Управление конфигурацией
+│   ├── crud/              # HTTP обработчики
+│   ├── storage/           # Хэндлеры базы данных
+│   └── telegram/          # Интеграция с Telegram
+├── pkg/                   # Общие утилиты
+│   ├── logger/            # Логгирование
+│   ├── metrics/           # Prometheus метрики
+│   └── utils/             # Общие utilities
+├── migrations/            # Миграции базы данных
+├── grafana/               # файлы для работы Grafana
 │   └── provisioning/
-│       ├── dashboards/    # Dashboard definitions
-│       └── datasources/   # Data source configurations
-├── docker-compose.yaml    # Full environment setup
-├── Dockerfile.*           # Service-specific Dockerfiles
-└── *.yml                  # Monitoring configuration files
+│       ├── dashboards/    # Определения дашбордов
+│       └── datasources/   # Конфигурации источников данных
+├── docker-compose.yaml    # Полная настройка окружения
+├── Dockerfile.*           # Dockerfiles сервисов
+└── *.yml                  # Конфигурационные файлы мониторинга
 ```
 
 ## API
 ### CRUD Service (8080)
 ```bash 
-GET    /sites          # List all websites
-GET    /sites/{id}     # Get specific website
-POST   /sites          # Add new website
-PUT    /sites/{id}     # Update website
-DELETE /sites/{id}     # Remove website
+GET    /sites          # Список всех веб-сайтов
+GET    /sites/{id}     # Получить конкретный веб-сайт
+POST   /sites          # Добавить новый веб-сайт
+PUT    /sites/{id}     # Обновить веб-сайт
+DELETE /sites/{id}     # Удалить веб-сайт
 ```
 
-## Deployment
+## Запуск
 ```bash 
 cd site-monitor
 docker-compose up
