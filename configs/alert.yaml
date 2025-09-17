@@ -1,6 +1,6 @@
 telegram:
-  bot_token: "1901704464:AAHzzvAN6Ga4ubM14twZ0ZtRnMz_D8OEnLs"
-  chat_id: 1112661288
+  bot_token: ""
+  chat_id: 0
 
 kafka:
   brokers:
