@@ -180,6 +180,8 @@ func (c *Checker) CheckSite(url string) SiteCheckResult {
 			"status", result.StatusCode,
 			"response_time_ms", result.ResponseTime,
 		)
+
+		c.sendToKafka(result)
 	}
 	metrics.SiteCheckTotal.WithLabelValues(url, statusCode).Inc()
 	metrics.SiteCheckDuration.WithLabelValues(url, statusCode).Observe(float64(result.ResponseTime))

@@ -1,7 +1,7 @@
 checker:
   timeout: 5
   interval: 5
-  api_url: "http://checker:8080"
+  api_url: "http://crud-service:8080"
 
 kafka:
   brokers:
