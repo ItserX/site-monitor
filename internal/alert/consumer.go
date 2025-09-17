@@ -38,7 +38,6 @@ func NewAlertConsumer(cfg config.AlertConfig, log *logger.Logger, tg *telegram.C
 		log:      log,
 		telegram: tg,
 		redis:    rdb,
-		cooldown: time.Duration(cfg.Redis.CooldownMinutes) * time.Minute,
 	}
 }
 
@@ -85,12 +84,12 @@ func (a *AlertConsumer) Consume(ctx context.Context) {
 func (a *AlertConsumer) shouldSendAlert(url string, isUp bool) (bool, error) {
 	key := "site_status:" + url
 	val, err := a.redis.Get(key).Result()
-
+	if err != nil {
+		return false, err
+	}
 	var state SiteState
-	if err == nil {
-		if err := json.Unmarshal([]byte(val), &state); err != nil {
-			return true, nil
-		}
+	if err := json.Unmarshal([]byte(val), &state); err != nil {
+		return true, nil
 	}
 
 	now := time.Now()
@@ -99,9 +98,6 @@ func (a *AlertConsumer) shouldSendAlert(url string, isUp bool) (bool, error) {
 	if val == "" || state.IsUp != isUp {
 		send = true
 		state.IsUp = isUp
-		state.LastAlert = now
-	} else if now.Sub(state.LastAlert) > a.cooldown {
-		send = true
 		state.LastAlert = now
 	}
 
@@ -117,7 +113,7 @@ func formatAlert(raw []byte) (string, error) {
 		return "", err
 	}
 	statusText := "❌ Unavailable"
-	if alert.Status < 400 {
+	if alert.Status != 0 {
 		statusText = "✅ Available"
 	}
 	msg := fmt.Sprintf(

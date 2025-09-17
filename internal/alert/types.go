@@ -17,7 +17,6 @@ type AlertConsumer struct {
 	log      *logger.Logger
 	telegram *telegram.Client
 	redis    *redis.Client
-	cooldown time.Duration
 }
 
 type AlertMessage struct {

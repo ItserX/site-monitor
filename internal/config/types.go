@@ -39,9 +39,8 @@ type AlertConfig struct {
 	} `yaml:"telegram"`
 
 	Redis struct {
-		Addr            string `yaml:"addr"`
-		Password        string `yaml:"password"`
-		DB              int    `yaml:"db"`
-		CooldownMinutes int    `yaml:"cooldown_minutes"`
+		Addr     string `yaml:"addr"`
+		Password string `yaml:"password"`
+		DB       int    `yaml:"db"`
 	} `yaml:"redis"`
 }

@@ -165,17 +165,14 @@ func (c *Checker) CheckSite(url string) SiteCheckResult {
 	} else {
 		defer resp.Body.Close()
 		result.StatusCode = resp.StatusCode
-		result.Success = resp.StatusCode < 400 && resp.StatusCode != 0
 		statusCode = fmt.Sprintf("%d", resp.StatusCode)
 
-		if result.Success {
-			metrics.SiteCheckSuccess.WithLabelValues(url).Set(1)
-			c.log.Sugar.Infow("Site check successed",
-				"url", url,
-				"status", result.StatusCode,
-				"response_time_ms", result.ResponseTime,
-			)
-		}
+		metrics.SiteCheckSuccess.WithLabelValues(url).Set(1)
+		c.log.Sugar.Infow("Site check successed",
+			"url", url,
+			"status", result.StatusCode,
+			"response_time_ms", result.ResponseTime,
+		)
 	}
 
 	c.sendToKafka(result)

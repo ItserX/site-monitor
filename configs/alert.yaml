@@ -11,6 +11,4 @@ kafka:
 redis:
   addr: "redis:6379"
   password: ""      
-  db: 0         
-  cooldown_minutes: 5  
-  
+  db: 0  
