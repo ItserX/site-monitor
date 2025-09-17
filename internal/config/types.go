@@ -11,6 +11,10 @@ type CheckerConfig struct {
 		Brokers []string `yaml:"brokers"`
 		Topic   string   `yaml:"topic"`
 	} `yaml:"kafka"`
+
+	Prometheus struct {
+		PushgatewayURL string `yaml:"pushgateway_url"`
+	} `yaml:"prometheus"`
 }
 
 type CrudConfig struct {
@@ -20,4 +24,24 @@ type CrudConfig struct {
 	Postgres struct {
 		DSN string `yaml:"dsn"`
 	} `yaml:"postgres"`
+}
+
+type AlertConfig struct {
+	Kafka struct {
+		Brokers []string `yaml:"brokers"`
+		Topic   string   `yaml:"topic"`
+		GroupID string   `yaml:"group_id"`
+	} `yaml:"kafka"`
+
+	Telegram struct {
+		BotToken string `yaml:"bot_token"`
+		ChatID   string `yaml:"chat_id"`
+	} `yaml:"telegram"`
+
+	Redis struct {
+		Addr            string `yaml:"addr"`
+		Password        string `yaml:"password"`
+		DB              int    `yaml:"db"`
+		CooldownMinutes int    `yaml:"cooldown_minutes"`
+	} `yaml:"redis"`
 }

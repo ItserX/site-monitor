@@ -8,10 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/segmentio/kafka-go"
 
 	"site-monitor/internal/config"
 	"site-monitor/pkg/logger"
+	"site-monitor/pkg/metrics"
 )
 
 func NewChecker(cfg config.CheckerConfig, log *logger.Logger) *Checker {
@@ -47,11 +49,21 @@ func (c *Checker) Run(ctx context.Context) {
 }
 
 func (c *Checker) checkSites() {
+
+	cycleStart := time.Now()
+	defer func() {
+		metrics.CheckerCycleDuration.Observe(time.Since(cycleStart).Seconds())
+		metrics.CheckerCycleTotal.Inc()
+		c.pushMetricsToPrometheus()
+	}()
+
 	sites, err := c.fetchSitesFromAPI()
 	if err != nil {
+		metrics.CheckerAPIErrors.Inc()
 		return
 	}
 
+	metrics.CheckerSitesProcessed.Set(float64(len(sites)))
 	c.log.Sugar.Infow("Start checking sites", "count", len(sites))
 
 	jobs := make(chan Site, len(sites))
@@ -107,14 +119,16 @@ func (c *Checker) fetchSitesFromAPI() ([]Site, error) {
 }
 
 func (c *Checker) sendToKafka(result SiteCheckResult) {
-	fmt.Println(123132)
-	message := fmt.Sprintf(`{"url":"%s","status":%d,"response_time_ms":%d,"error":"%s","timestamp":"%s"}`,
-		result.URL, result.StatusCode, result.ResponseTime, result.ErrorMsg, result.Timestamp.Format(time.RFC3339))
+	msg, err := json.Marshal(result)
+	if err != nil {
+		c.log.Sugar.Errorw("Failed to marshal JSON for Kafka", "url", result.URL, "error", err)
+		return
+	}
 
-	err := c.kafkaWriter.WriteMessages(context.Background(),
+	err = c.kafkaWriter.WriteMessages(context.Background(),
 		kafka.Message{
 			Key:   []byte(result.URL),
-			Value: []byte(message),
+			Value: []byte(msg),
 		},
 	)
 	if err != nil {
@@ -132,15 +146,22 @@ func (c *Checker) CheckSite(url string) SiteCheckResult {
 	resp, err := client.Get(url)
 
 	result.ResponseTime = time.Since(start).Milliseconds()
+	statusCode := "unknown"
 
 	if err != nil {
 		result.Success = false
 		result.ErrorMsg = err.Error()
+
+		metrics.SiteCheckErrors.WithLabelValues(url, "connection_error").Inc()
+		metrics.SiteCheckSuccess.WithLabelValues(url).Set(0)
+		statusCode = "error"
+
 		c.log.Sugar.Errorw("Site check failed",
 			"url", url,
 			"error", err.Error(),
 			"response_time_ms", result.ResponseTime,
 		)
+
 		c.sendToKafka(result)
 
 		return result
@@ -148,15 +169,39 @@ func (c *Checker) CheckSite(url string) SiteCheckResult {
 	defer resp.Body.Close()
 
 	result.StatusCode = resp.StatusCode
-	result.Success = resp.StatusCode < 400
+	result.Success = resp.StatusCode < 400 && resp.StatusCode != 0
+	statusCode = fmt.Sprintf("%d", resp.StatusCode)
 
 	if result.Success {
+		metrics.SiteCheckSuccess.WithLabelValues(url).Set(1)
+
 		c.log.Sugar.Infow("Site check successed",
 			"url", url,
 			"status", result.StatusCode,
 			"response_time_ms", result.ResponseTime,
 		)
 	}
+	metrics.SiteCheckTotal.WithLabelValues(url, statusCode).Inc()
+	metrics.SiteCheckDuration.WithLabelValues(url, statusCode).Observe(float64(result.ResponseTime))
 
 	return result
+}
+
+func (c *Checker) pushMetricsToPrometheus() {
+	pusher := push.New(c.cfg.Prometheus.PushgatewayURL, "site_checker")
+
+	pusher.Collector(metrics.SiteCheckTotal)
+	pusher.Collector(metrics.SiteCheckSuccess)
+	pusher.Collector(metrics.SiteCheckErrors)
+	pusher.Collector(metrics.SiteCheckDuration)
+	pusher.Collector(metrics.CheckerCycleTotal)
+	pusher.Collector(metrics.CheckerCycleDuration)
+	pusher.Collector(metrics.CheckerSitesProcessed)
+	pusher.Collector(metrics.CheckerAPIErrors)
+
+	if err := pusher.Push(); err != nil {
+		c.log.Sugar.Errorw("Failed to push metrics to Pushgateway", "error", err)
+	} else {
+		c.log.Sugar.Debugw("Metrics pushed to Pushgateway successfully")
+	}
 }

@@ -2,4 +2,4 @@ server:
   port: 8080
 
 postgres:
-  dsn: "postgres://sitemonitor:sitemonitor@localhost:5432/sitemonitor?sslmode=disable"
+  dsn: "postgres://sitemonitor:sitemonitor@postgres:5432/sitemonitor?sslmode=disable"

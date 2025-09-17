@@ -1,9 +1,12 @@
 checker:
   timeout: 5
   interval: 5
-  api_url: "http://localhost:8080"
+  api_url: "http://checker:8080"
 
 kafka:
   brokers:
-    - "localhost:9092"
+    - "kafka:9092"
   topic: "site_alerts"
+
+prometheus:
+  pushgateway_url: "http://pushgateway:9091"

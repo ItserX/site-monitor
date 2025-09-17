@@ -1,0 +1,16 @@
+telegram:
+  bot_token: "1901704464:AAHzzvAN6Ga4ubM14twZ0ZtRnMz_D8OEnLs"
+  chat_id: 1112661288
+
+kafka:
+  brokers:
+    - "kafka:9092"
+  topic: "site_alerts"
+  group_id: "groupID"
+
+redis:
+  addr: "redis:6379"
+  password: ""      
+  db: 0         
+  cooldown_minutes: 5  
+  

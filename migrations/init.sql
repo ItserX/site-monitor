@@ -1,6 +1,5 @@
 CREATE TABLE IF NOT EXISTS sites (
     id UUID PRIMARY KEY,
-    url TEXT NOT NULL,
+    url TEXT NOT NULL UNIQUE,
     active BOOLEAN NOT NULL DEFAULT true
 );
-

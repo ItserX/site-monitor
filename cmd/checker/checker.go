@@ -3,24 +3,22 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"site-monitor/internal/checker"
 	"site-monitor/internal/config"
 	"site-monitor/pkg/logger"
+	"site-monitor/pkg/utils"
 )
 
 func main() {
-	log, err := setupLogger()
+	log, err := logger.SetupLogger()
 	if err != nil {
 		fmt.Println("Failed to initialize logger:", err)
 		return
 	}
 	defer log.Sync()
 
-	checkerCfg, err := loadConfigs()
+	checkerCfg, err := loadConfig()
 	if err != nil {
 		log.Sugar.Errorw("Failed to load config", "error", err)
 		return
@@ -28,30 +26,16 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	setupGracefulShutdown(cancel, log)
+	utils.SetupGracefulShutdown(cancel, log)
 
 	c := checker.NewChecker(checkerCfg, log)
 	c.Run(ctx)
 }
 
-func setupLogger() (*logger.Logger, error) {
-	return logger.SetupLogger()
-}
-
-func loadConfigs() (config.CheckerConfig, error) {
+func loadConfig() (config.CheckerConfig, error) {
 	var cfg config.CheckerConfig
 	if err := config.LoadConfig("configs/checker.yaml", &cfg); err != nil {
 		return cfg, err
 	}
 	return cfg, nil
-}
-
-func setupGracefulShutdown(cancelFunc context.CancelFunc, log *logger.Logger) {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		sig := <-sigCh
-		log.Sugar.Warnw("Shutdown signal received", "signal", sig.String())
-		cancelFunc()
-	}()
 }

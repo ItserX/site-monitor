@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -15,17 +12,18 @@ import (
 	"site-monitor/internal/crud"
 	"site-monitor/internal/storage"
 	"site-monitor/pkg/logger"
+	"site-monitor/pkg/utils"
 )
 
 func main() {
-	log, err := setupLogger()
+	log, err := logger.SetupLogger()
 	if err != nil {
 		fmt.Println("Failed to initialize logger:", err)
 		return
 	}
 	defer log.Sync()
 
-	crudCfg, err := loadConfigs()
+	crudCfg, err := loadConfig()
 	if err != nil {
 		log.Sugar.Errorw("Failed to load config", "error", err)
 		return
@@ -39,16 +37,12 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	setupGracefulShutdown(cancel, log)
+	utils.SetupGracefulShutdown(cancel, log)
 
 	runCrudServer(ctx, crudCfg, pgClient, log)
 }
 
-func setupLogger() (*logger.Logger, error) {
-	return logger.SetupLogger()
-}
-
-func loadConfigs() (config.CrudConfig, error) {
+func loadConfig() (config.CrudConfig, error) {
 	var crudCfg config.CrudConfig
 
 	if err := config.LoadConfig("configs/crud.yaml", &crudCfg); err != nil {
@@ -66,16 +60,6 @@ func setupPostgres(crudCfg config.CrudConfig, log *logger.Logger) (storage.Stora
 		return nil, err
 	}
 	return client, nil
-}
-
-func setupGracefulShutdown(cancelFunc context.CancelFunc, log *logger.Logger) {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		sig := <-sigCh
-		log.Sugar.Warnw("Shutdown signal received", "signal", sig.String())
-		cancelFunc()
-	}()
 }
 
 func runCrudServer(ctx context.Context, cfg config.CrudConfig, dbClient storage.Storage, log *logger.Logger) {

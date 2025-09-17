@@ -1,11 +1,12 @@
 package checker
 
 import (
-	"site-monitor/internal/config"
-	"site-monitor/pkg/logger"
 	"time"
 
 	"github.com/segmentio/kafka-go"
+
+	"site-monitor/internal/config"
+	"site-monitor/pkg/logger"
 )
 
 const workerCount = 25
@@ -18,12 +19,12 @@ type Checker struct {
 }
 
 type SiteCheckResult struct {
-	URL          string
-	StatusCode   int
-	ResponseTime int64
-	Success      bool
-	Timestamp    time.Time
-	ErrorMsg     string
+	URL          string    `json:"url"`
+	StatusCode   int       `json:"status"`
+	ResponseTime int64     `json:"response_time_ms"`
+	Success      bool      `json:"success"`
+	Timestamp    time.Time `json:"timestamp"`
+	ErrorMsg     string    `json:"error"`
 }
 
 type Site struct {
