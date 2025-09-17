@@ -116,9 +116,10 @@ func formatAlert(raw []byte) (string, error) {
 	if err := json.Unmarshal(raw, &alert); err != nil {
 		return "", err
 	}
-
 	statusText := "❌ Unavailable"
-
+	if alert.Status < 400 {
+		statusText = "✅ Available"
+	}
 	msg := fmt.Sprintf(
 		"🚨 *Website Alert!*\n\n🌐 *URL*: %s\n📊 *Status*: %s (%d)\n⏱ *Response time*: %d ms\n🕒 *Timestamp*: %s",
 		alert.URL,

@@ -151,10 +151,10 @@ func (c *Checker) CheckSite(url string) SiteCheckResult {
 	if err != nil {
 		result.Success = false
 		result.ErrorMsg = err.Error()
+		statusCode = "error"
 
 		metrics.SiteCheckErrors.WithLabelValues(url, "connection_error").Inc()
 		metrics.SiteCheckSuccess.WithLabelValues(url).Set(0)
-		statusCode = "error"
 
 		c.log.Sugar.Errorw("Site check failed",
 			"url", url,
@@ -162,27 +162,24 @@ func (c *Checker) CheckSite(url string) SiteCheckResult {
 			"response_time_ms", result.ResponseTime,
 		)
 
-		c.sendToKafka(result)
+	} else {
+		defer resp.Body.Close()
+		result.StatusCode = resp.StatusCode
+		result.Success = resp.StatusCode < 400 && resp.StatusCode != 0
+		statusCode = fmt.Sprintf("%d", resp.StatusCode)
 
-		return result
+		if result.Success {
+			metrics.SiteCheckSuccess.WithLabelValues(url).Set(1)
+			c.log.Sugar.Infow("Site check successed",
+				"url", url,
+				"status", result.StatusCode,
+				"response_time_ms", result.ResponseTime,
+			)
+		}
 	}
-	defer resp.Body.Close()
 
-	result.StatusCode = resp.StatusCode
-	result.Success = resp.StatusCode < 400 && resp.StatusCode != 0
-	statusCode = fmt.Sprintf("%d", resp.StatusCode)
+	c.sendToKafka(result)
 
-	if result.Success {
-		metrics.SiteCheckSuccess.WithLabelValues(url).Set(1)
-
-		c.log.Sugar.Infow("Site check successed",
-			"url", url,
-			"status", result.StatusCode,
-			"response_time_ms", result.ResponseTime,
-		)
-
-		c.sendToKafka(result)
-	}
 	metrics.SiteCheckTotal.WithLabelValues(url, statusCode).Inc()
 	metrics.SiteCheckDuration.WithLabelValues(url, statusCode).Observe(float64(result.ResponseTime))
 
